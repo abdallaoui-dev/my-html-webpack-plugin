@@ -1,0 +1,27 @@
+{
+  "name": "my-html-webpack-plugin",
+  "version": "2.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "webpack --config webpack.config.dev.ts",
+    "prod": "webpack --config webpack.config.prod.ts"
+  },
+  "keywords": [],
+  "author": "Abdessamad Abdallaoui",
+  "license": "ISC",
+  "dependencies": {
+    "file-bundler": "^2.1.0",
+    "html-minifier": "^4.0.0",
+    "webpack": "^5.85.0"
+  },
+  "devDependencies": {
+    "@types/html-minifier": "^4.0.2",
+    "@types/node": "^18.16.16",
+    "@types/webpack-node-externals": "^3.0.0",
+    "ts-loader": "^9.4.3",
+    "ts-node": "^10.9.1",
+    "webpack-cli": "^5.1.1",
+    "webpack-node-externals": "^3.0.0"
+  }
+}

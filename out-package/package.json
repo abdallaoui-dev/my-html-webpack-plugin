@@ -1,0 +1,29 @@
+{
+  "name": "my-html-webpack-plugin",
+  "version": "2.0.0",
+  "description": "",
+  "main": "index.js",
+  "types": "./index.d.ts",
+  "keywords": [
+    "html",
+    "webpack",
+    "plugin",
+    "bundle"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Abdessamad Abdallaoui",
+  "license": "ISC",
+  "dependencies": {
+    "file-bundler": "^2.1.0",
+    "html-minifier": "^4.0.0",
+    "webpack": "^5.85.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abdallaoui-dev/my-html-webpack-plugin.git"
+  },
+  "homepage": "https://github.com/abdallaoui-dev/my-html-webpack-plugin",
+  "bugs": "https://github.com/abdallaoui-dev/my-html-webpack-plugin/issues"
+}
