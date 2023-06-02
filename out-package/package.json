@@ -1,6 +1,6 @@
 {
   "name": "my-html-webpack-plugin",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "",
   "main": "index.js",
   "types": "./index.d.ts",
@@ -16,7 +16,7 @@
   "author": "Abdessamad Abdallaoui",
   "license": "ISC",
   "dependencies": {
-    "file-bundler": "^2.1.0",
+    "file-bundler": "^2.2.0",
     "html-minifier": "^4.0.0",
     "webpack": "^5.85.0"
   },

@@ -6,9 +6,20 @@ import path from "path"
 import Logger from "./logger"
 
 type __my_html_webpack_plugin_options = {
-   filePathName: string
 
-   includerPrefixName?: string
+   entry: {
+      [k: string]: {
+         filePathName: string
+         outputFilename: string
+      }
+   }
+
+   output: {
+      path: string
+      exclude?: string
+   },
+
+   includePrefixName?: string
 
    jsSource?: {
       watchFilePathNames: true
@@ -18,11 +29,6 @@ type __my_html_webpack_plugin_options = {
    /** defaults to auto when it's undefined*/
    minify?: boolean
 
-   output?: {
-      path: string
-      filename: string
-      exclude?: string
-   },
 
    includeProperties?: {
       [k: string]: string
@@ -32,7 +38,7 @@ type __my_html_webpack_plugin_options = {
 
 export default class MyHtmlWebpackPlugin {
    private name = "MyHtmlWebpackPlugin"
-   private filenameCache: string[] = []
+   private filePathNameCache = new Set<string>()
    private options
 
    constructor(options: __my_html_webpack_plugin_options) {
@@ -53,37 +59,50 @@ export default class MyHtmlWebpackPlugin {
       
       const modifiedFile = this.getFileModifiedFile(compiler)
 
-      if (!this.options.output || !this.options.output.path || !this.options.output.filename) {
-         Logger.error(this.name, `the output path || filename is missing.`)
+      if (!this.options.output || !this.options.output.path) {
+         Logger.error(this.name, `the output path is missing.`)
          return
       }
 
       if (modifiedFile && !modifiedFile.endsWith(".html")) {
-         this.filenameCache.forEach(filename => compilation.fileDependencies.add(filename))
+         this.filePathNameCache.forEach(filename => compilation.fileDependencies.add(filename))
          // console.log("donnot bundle html and keep watching")
          return
       }
-
+      
       // exclude files that are included in js to prevent re-assembling the other files
       if (modifiedFile && this.options.output.exclude && modifiedFile.includes(this.options.output.exclude)) {
+         this.filePathNameCache.forEach(filename => compilation.fileDependencies.add(filename))
          return
       }
 
+      this.filePathNameCache.clear()
+
+      const minify = this.options.minify === undefined ? compiler.options.mode === "production" : Boolean(this.options.minify)
+      
+      // console.log("bundle html and keep watching")
+
       const fileBundler = new FileBundler({
-         className: this.options.includerPrefixName || this.name,
+         className: this.options.includePrefixName || this.name,
          pattern: "include",
          includeProperties: this.options.includeProperties
       })
-      // console.log("bundle html and keep watching")
-      const { source, filePathNames } = fileBundler.bundle(this.options.filePathName)
-      
-      this.filenameCache = filePathNames
-      
-      filePathNames.forEach(filePathName => compilation.fileDependencies.add(filePathName))
 
-      const minify = this.options.minify === undefined ? compiler.options.mode === "production" : Boolean(this.options.minify)
 
-      this.output(this.options.output.path, this.options.output.filename, source, minify)
+      for (const key in this.options.entry) {
+         const target = this.options.entry[key]
+
+         let { source, filePathNames } = fileBundler.bundle(target.filePathName)
+         
+         filePathNames.forEach(filePathName => {
+            this.filePathNameCache.add(filePathName)
+            compilation.fileDependencies.add(filePathName)
+         })
+   
+         if (minify) source = this.minify(source)
+   
+         this.output(this.options.output.path, target.outputFilename, source)
+      }
    }
 
    private minify(html: string) {
@@ -97,16 +116,20 @@ export default class MyHtmlWebpackPlugin {
          useShortDoctype: true
       })
    }
-   
-   private output(pathname: string, filename: string, html: string, minify: boolean) {
+
+   private output(pathname: string, filename: string, string: string) {
       try {
-         if (!fs.existsSync(pathname)) {
-            fs.mkdirSync(pathname)
+         const filePathName = path.resolve(pathname, filename.replace(/^[\\\/]/g, ""))
+
+         const directory = path.dirname(filePathName)
+
+         const relativePathname = path.relative(process.cwd(), directory)
+         
+         if (!fs.existsSync(relativePathname)) {
+            fs.mkdirSync(relativePathname, { recursive: true })
          }
 
-         if (minify) html = this.minify(html)
-
-         fs.writeFileSync(path.join(pathname, filename), html)
+         fs.writeFileSync(filePathName, string)
       } catch (e) {
          const error = e as Error
          Logger.error(this.name, error)
@@ -126,7 +149,7 @@ export default class MyHtmlWebpackPlugin {
       const assets = compilation.getAssets()
 
       const fileBundler = new FileBundler({
-         className: this.options.includerPrefixName || this.name,
+         className: this.options.includePrefixName || this.name,
          pattern: "include",
          includeProperties: this.options.includeProperties
       })

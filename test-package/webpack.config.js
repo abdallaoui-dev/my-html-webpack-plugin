@@ -18,22 +18,31 @@ const wconfig = {
 
    plugins: [
       new MyHtmlWebpackPlugin({
-         filePathName: joinPath("src/html/index.html"),
 
-         // jsSource: {
-         //    rootDir: joinPath("src/"),
-         //    watchFilePathNames: true
-         // },
+         entry: {
+            index: {
+               filePathName: joinPath("src/html/index.html"),
+               outputFilename: "index.html"
+            },
+            about: {
+               filePathName: joinPath("src/html/about.html"),
+               outputFilename: "about.html"
+            }
+         },
+
+         output: {
+            path: joinPath("dist"),
+            exclude: joinPath("src/html/templates")
+         },
+
+         jsSource: {
+            rootDir: joinPath("src/"),
+            watchFilePathNames: true
+         },
          
          // includerPrefixName: "myapp", // myapp.include("/file.html")
 
          // minify: false,
-         
-         output: {
-            path: joinPath("dist"),
-            filename: "index.html",
-            exclude: joinPath("src/html/templates")
-         },
 
          includeProperties: {
             title: "my website title",
