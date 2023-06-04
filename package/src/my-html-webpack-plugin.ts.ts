@@ -137,15 +137,19 @@ export default class MyHtmlWebpackPlugin {
    }
 
    private handleCompilationAssets = (compiler: Compiler, compilation: Compilation) => {
+      const modifiedFile = this.getFileModifiedFile(compiler)
 
       this.handleExternalHtmlFiles(compiler, compilation)
       
       if (this.options.jsSource && this.options.jsSource.watchFilePathNames) {
-         this.handleHtmlInjsFiles(compilation)
+         if (modifiedFile && modifiedFile.match(/(\.js|\.ts)$/)) {
+            this.handleHtmlInjsFiles(compilation)
+         }
       }
    }
 
    private handleHtmlInjsFiles(compilation: Compilation) {
+      
       const assets = compilation.getAssets()
 
       const fileBundler = new FileBundler({
