@@ -9,14 +9,17 @@ const wconfig = {
    devtool: false,
    watch: true,
 
-   entry: joinPath("src/js/index.js"),
+   entry: {
+      index: joinPath("src/js/index.js")
+   },
 
    output: {
-      path: joinPath("dist/js"),
-      filename: "index.js"
+      path: joinPath("dist"),
+      filename: "js/index.js"
    },
 
    plugins: [
+      
       new MyHtmlWebpackPlugin({
 
          entry: {
