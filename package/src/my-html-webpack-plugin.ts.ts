@@ -1,163 +1,106 @@
-import { Compiler, Compilation, sources } from "webpack"
+import { Compiler, Stats } from "webpack"
 import FileBundler from "file-bundler"
 import htmlMinifier from "html-minifier"
 import fs from "fs"
 import path from "path"
-import Logger from "./logger"
-
-type __my_html_webpack_plugin_options = {
-
-   entry: {
-      [k: string]: {
-         filePathName: string
-         outputFilename: string
-      }
-   }
-
-   output: {
-      path: string
-      exclude?: string
-   },
-
-   includePrefixName?: string
-
-   jsSource?: {
-      watchFilePathNames: true
-      rootDir: string
-   }
-
-   /** defaults to auto when it's undefined*/
-   minify?: boolean
-
-
-   includeProperties?: {
-      [k: string]: string
-   }
-}
-
 
 export default class MyHtmlWebpackPlugin {
-   private name = "MyHtmlWebpackPlugin"
-   private filePathNames = new Set<string>()
-   private options
+   private readonly name = "MyHtmlWebpackPlugin"
+   private readonly filePathNames = new Set<string>()
+   private readonly options
+   private logger!: WebpackLogger
 
-   constructor(options: __my_html_webpack_plugin_options) {
+   constructor(options: MyHtmlWebpackPluginOptions) {
       this.options = options
    }
 
    public apply(compiler: Compiler) {
+      this.logger = compiler.getInfrastructureLogger(this.name)
+      
+      compiler.hooks.done.tap(this.name, (stats: Stats) => {
 
-      compiler.hooks.compilation.tap(this.name, (compilation) => {
-         compilation.hooks.processAssets.tap(this.name, () => {
-            this.handleCompilationAssets(compiler, compilation)
-         })
+         this.handleExternalHtmlFiles(stats)
+
+         stats.compilation.fileDependencies.addAll(this.filePathNames)
       })
    }
 
-   private handleExternalHtmlFiles(compiler: Compiler, compilation: Compilation) {
+   private handleExternalHtmlFiles(stats: Stats) {
+
+      const compilation = stats.compilation
+      const compiler = compilation.compiler
 
       const modifiedFile = this.getModifiedFile(compiler)
-
+      
       if (!this.options.output || !this.options.output.path) {
-         Logger.error(this.name, `the output path is missing.`)
+         this.logger.error(`the output path is missing.`)
          return
       }
 
-      if (modifiedFile && !modifiedFile.endsWith(".html")) {
+      if (modifiedFile && !this.filePathNames.has(modifiedFile)) {
          return
       }
 
-      if (modifiedFile && this.options.output.exclude && modifiedFile.includes(this.options.output.exclude)) {
-         return
-      }
-
-      const minify = this.options.minify === undefined ? compiler.options.mode === "production" : Boolean(this.options.minify)
+      const minify = compiler.options.mode === "production" || Boolean(this.options.minify)
 
       const fileBundler = new FileBundler({
-         className: this.options.includePrefixName || this.name,
+         className: this.options.prefixName || this.name,
          pattern: "include",
-         includeProperties: this.options.includeProperties
+         includeProperties: this.options.staticProperties
       })
-
+      
       for (const key in this.options.entry) {
          const target = this.options.entry[key]
-
-         let { source, filePathNames } = fileBundler.bundle(target.filePathName)
-
-         filePathNames.forEach(filePathName => {
+         
+         // bundle html files
+         const bundleResults = fileBundler.bundle(target.filePathName)
+         this.filePathNames.clear()
+         bundleResults.filePathNames.forEach(filePathName => {
             this.filePathNames.add(filePathName)
          })
 
-         if (minify) source = this.minify(source)
+         if (minify) this.minify(bundleResults)
 
-         this.output(this.options.output.path, target.outputFilename, source)
-      }
-   }
+         const chunk = compilation.namedChunks.get(key)
+         
+         if (chunk) {
+            const scriptFileName = Array.from(chunk.files)[0] || key + ".js"
 
-   private handleCompilationAssets = (compiler: Compiler, compilation: Compilation) => {
-      
-      this.handleExternalHtmlFiles(compiler, compilation)
-
-      if (this.options.jsSource && this.options.jsSource.watchFilePathNames) {
-         this.injectHtmlToJsSource(compiler, compilation)
-      }
-
-      compilation.fileDependencies.addAll(this.filePathNames)
-   }
-
-   private injectHtmlToJsSource(compiler: Compiler, compilation: Compilation) {
-
-      const modifiedFile = this.getModifiedFile(compiler)
-
-      if (modifiedFile && !modifiedFile.match(/(\.js|\.ts|\.html)$/)) {
-         return
-      } 
-
-      const fileBundler = new FileBundler({
-         className: this.options.includePrefixName || this.name,
-         pattern: "include",
-         includeProperties: this.options.includeProperties
-      })
-      
-      const assets = compilation.getAssets()
-
-      assets.forEach((asset) => {
-         if (!asset.name.match(/(\.js|\.ts)$/)) return
-
-         let source = asset.source.source().toString()
-
-         try {
-            let sourceIsUpdated = false
-            source = source.replace(fileBundler.includePattern, (match, g1, name) => {
-               if (typeof name !== "string") throw new Error("something went wrong with regex")
-
-               if (name.startsWith(".")) {
-                  if (!this.options.includeProperties || typeof this.options.includeProperties !== "object") return ""
-                  return encodeURI(this.options.includeProperties[name.replace(/^\./, "")] || "")
-               }
-
-               let filePathName = name.replace(/["'`()]+/g, "")
-
-               filePathName = path.resolve(this.options.jsSource?.rootDir || "", filePathName.replace(/^[\\\/]*/g, ""))
-
-               const { source, filePathNames } = fileBundler.bundle(filePathName)
-
-               filePathNames.forEach(filePathname => {
-                  this.filePathNames.add(filePathname)
-               })
-
-               sourceIsUpdated = true
-               return encodeURI(this.minify(source))
-            })
-
-            if (sourceIsUpdated) compilation.updateAsset(asset.name, new sources.RawSource(source))
-
-         } catch (error) {
-            const e = error as Error
-            Logger.error(this.name, e)
+            this.injectScript(bundleResults, scriptFileName)
          }
-      })
+
+         this.output(this.options.output.path, target.outputFilename, bundleResults)
+      }
+   }
+
+   private injectScript = (bundleResults: __bundleResults, filename: string) => {
+      if (!this.options.injectScriptTag) return
+      let index = -1
+      if (this.options.injectScriptTag === "head") {
+         index = bundleResults.source.indexOf(`</head>`)
+      } else {
+         index = bundleResults.source.lastIndexOf(`</body>`)
+      }
+
+      if (index === -1) return
+
+      let scriptTag = `<script src="${filename}"></script>`
       
+      const scriptTagAttributes = this.options.scriptTagAttributes
+
+      if (scriptTagAttributes) {
+         scriptTag = `<script `
+
+         for (const key in scriptTagAttributes) {
+            const att = scriptTagAttributes[key as "defer"]
+            scriptTag += typeof att === "string" ? `${key}="${att}" ` : `${key} `
+         }
+
+         scriptTag += ` src="${filename}"></script>`
+         scriptTag = scriptTag.replace(/\s+/g, " ")
+      }
+
+      bundleResults.source = bundleResults.source.slice(0, index) + scriptTag + bundleResults.source.slice(index)
    }
 
    private getModifiedFile(compiler: Compiler) {
@@ -166,8 +109,8 @@ export default class MyHtmlWebpackPlugin {
       return [...modifiedFiles][0] || null
    }
 
-   private minify(html: string) {
-      return htmlMinifier.minify(html, {
+   private minify(bundleResults: __bundleResults) {
+      bundleResults.source = htmlMinifier.minify(bundleResults.source, {
          removeComments: true,
          continueOnParseError: true,
          collapseWhitespace: true,
@@ -178,7 +121,7 @@ export default class MyHtmlWebpackPlugin {
       })
    }
 
-   private output(pathname: string, filename: string, source: string) {
+   private output(pathname: string, filename: string, bundleResults: __bundleResults) {
       try {
          const filePathName = path.resolve(pathname, filename.replace(/^[\\\/]/g, ""))
 
@@ -190,11 +133,73 @@ export default class MyHtmlWebpackPlugin {
             fs.mkdirSync(relativePathname, { recursive: true })
          }
 
-         fs.writeFileSync(filePathName, source)
+         fs.writeFileSync(filePathName, bundleResults.source)
       } catch (e) {
          const error = e as Error
-         Logger.error(this.name, error)
+         this.logger.error(error)
       }
    }
 
+}
+
+type MyHtmlWebpackPluginOptions = {
+
+   entry: {
+      [k: string]: {
+         filePathName: string
+         outputFilename: string
+      }
+   }
+
+   output: {
+      path: string
+   },
+
+   prefixName?: string
+
+   minify?: boolean
+
+   /** html entry keys must match with js entry keys*/
+   injectScriptTag?: "body" | "head"
+   scriptTagAttributes?: {async?: true, defer?: true, type?: string, id?: string}
+
+   staticProperties?: {
+      [k: string]: string
+   }
+}
+
+
+type __bundleResults = {
+   source: string;
+   filePathNames: string[];
+}
+
+
+
+
+
+
+
+
+interface WebpackLogger {
+	getChildLogger: (arg0: string | (() => string)) => WebpackLogger;
+	error(...args: any[]): void;
+	warn(...args: any[]): void;
+	info(...args: any[]): void;
+	log(...args: any[]): void;
+	debug(...args: any[]): void;
+	assert(assertion: any, ...args: any[]): void;
+	trace(): void;
+	clear(): void;
+	status(...args: any[]): void;
+	group(...args: any[]): void;
+	groupCollapsed(...args: any[]): void;
+	groupEnd(...args: any[]): void;
+	profile(label?: any): void;
+	profileEnd(label?: any): void;
+	time(label?: any): void;
+	timeLog(label?: any): void;
+	timeEnd(label?: any): void;
+	timeAggregate(label?: any): void;
+	timeAggregateEnd(label?: any): void;
 }

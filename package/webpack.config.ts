@@ -7,7 +7,6 @@ const joinPath = (mypath: string) => path.join(__dirname, mypath)
 const wconfig: Configuration = {
    
    mode: "production",
-   devtool: false,
    watch: true,
    target: ["node", "es5"],
    externalsPresets: { node: true },
@@ -28,6 +27,7 @@ const wconfig: Configuration = {
       rules: [
          {
             test: /\.ts$/,
+            exclude: /node_modules/,
             use: {
                loader: "ts-loader"
             }

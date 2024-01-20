@@ -1,5 +1,6 @@
 import { Compiler } from "webpack";
-type __my_html_webpack_plugin_options = {
+
+type MyHtmlWebpackPluginOptions = {
 
    entry: {
       [k: string]: {
@@ -10,28 +11,24 @@ type __my_html_webpack_plugin_options = {
 
    output: {
       path: string
-      exclude?: string
    },
 
-   includePrefixName?: string
+   prefixName?: string
 
-   jsSource?: {
-      watchFilePathNames: true
-      rootDir: string
-   }
-   
-   /** defaults to auto when it's undefined*/
    minify?: boolean
 
+   /** html entry keys must match with js entry keys*/
+   injectScriptTag?: "body" | "head"
+   scriptTagAttributes?: {async?: true, defer?: true, type?: string, id?: string}
 
-   includeProperties?: {
+   staticProperties?: {
       [k: string]: string
    }
 }
 
 declare class MyHtmlWebpackPlugin {
     private options;
-    constructor(options: __my_html_webpack_plugin_options);
+    constructor(options: MyHtmlWebpackPluginOptions);
     apply(compiler: Compiler): void;
 }
 export = MyHtmlWebpackPlugin

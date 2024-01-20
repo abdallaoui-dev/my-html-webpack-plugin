@@ -1,21 +1,24 @@
 const path = require("path")
 const MyHtmlWebpackPlugin = require("my-html-webpack-plugin")
+// const webpack = require("webpack")
 
 const joinPath = (mypath) => path.join(__dirname, mypath)
 
 const wconfig = {
    
    mode: "development",
-   devtool: false,
    watch: true,
 
    entry: {
-      index: joinPath("src/js/index.js")
+      index: joinPath("src/js/index.js"),
+      about: joinPath("src/js/about.js")
    },
 
    output: {
       path: joinPath("dist"),
-      filename: "js/index.js"
+      // filename: "js/[contenthash].js",
+      filename: "js/[name].js",
+      clean: true
    },
 
    plugins: [
@@ -34,20 +37,17 @@ const wconfig = {
          },
 
          output: {
-            path: joinPath("dist"),
-            exclude: joinPath("src/html/templates")
-         },
-
-         jsSource: {
-            rootDir: joinPath("src/"),
-            watchFilePathNames: true
+            path: joinPath("dist")
          },
          
-         // includerPrefixName: "myapp", // myapp.include("/file.html")
+         // prefixName: "myapp", // myapp.include("/file.html")
 
          // minify: false,
 
-         includeProperties: {
+         injectScriptTag: "body",
+         // scriptTagAttributes: {defer: true},
+
+         staticProperties: {
             title: "my website title",
             domainName: "domain name",
             meta: "<meta>",
@@ -61,6 +61,11 @@ const wconfig = {
       extensions: [".js"],
    }
 }
+
+// webpack(wconfig, () => {
+//    // console.log("hello")
+// })
+ 
 
 module.exports = wconfig
 
