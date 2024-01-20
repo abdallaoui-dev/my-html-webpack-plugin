@@ -4,20 +4,26 @@ const MyHtmlWebpackPlugin = require("my-html-webpack-plugin")
 
 const joinPath = (mypath) => path.join(__dirname, mypath)
 
+const page = "index"
+
 const wconfig = {
    
-   mode: "development",
+   mode: "production",
    watch: true,
 
    entry: {
-      index: joinPath("src/js/index.js"),
-      about: joinPath("src/js/about.js")
+      // index: joinPath("src/js/index.js"),
+      // about: joinPath("src/js/about.js"),
+      [page]: {
+         import: joinPath("src/js/index.js"),
+         filename: "js/s.[contenthash].js"
+      }
    },
 
    output: {
       path: joinPath("dist"),
-      // filename: "js/[contenthash].js",
-      filename: "js/[name].js",
+      // filename: "s.[contenthash].js",
+      // filename: "js/[name].js",
       clean: true
    },
 
@@ -26,14 +32,14 @@ const wconfig = {
       new MyHtmlWebpackPlugin({
 
          entry: {
-            index: {
+            [`${page}`]: {
                filePathName: joinPath("src/html/index.html"),
                outputFilename: "index.html"
             },
-            about: {
-               filePathName: joinPath("src/html/about.html"),
-               outputFilename: "about.html"
-            }
+            // about: {
+            //    filePathName: joinPath("src/html/about.html"),
+            //    outputFilename: "about.html"
+            // }
          },
 
          output: {

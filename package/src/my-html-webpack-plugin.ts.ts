@@ -52,9 +52,8 @@ export default class MyHtmlWebpackPlugin {
       for (const key in this.options.entry) {
          const target = this.options.entry[key]
          
-         // bundle html files
          const bundleResults = fileBundler.bundle(target.filePathName)
-         this.filePathNames.clear()
+
          bundleResults.filePathNames.forEach(filePathName => {
             this.filePathNames.add(filePathName)
          })
