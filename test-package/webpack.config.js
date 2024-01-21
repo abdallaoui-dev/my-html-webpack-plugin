@@ -1,28 +1,22 @@
 const path = require("path")
 const MyHtmlWebpackPlugin = require("my-html-webpack-plugin")
-// const webpack = require("webpack")
+const webpack = require("webpack")
 
 const joinPath = (mypath) => path.join(__dirname, mypath)
-
-const page = "index"
 
 const wconfig = {
    
    mode: "production",
-   watch: true,
+   watch: false,
 
    entry: {
-      // index: joinPath("src/js/index.js"),
-      // about: joinPath("src/js/about.js"),
-      [page]: {
-         import: joinPath("src/js/index.js"),
-         filename: "js/s.[contenthash].js"
-      }
+      index: joinPath("src/js/index.js"),
+      about: joinPath("src/js/about.js"),
    },
 
    output: {
       path: joinPath("dist"),
-      // filename: "s.[contenthash].js",
+      filename: "js/s.[contenthash].js",
       // filename: "js/[name].js",
       clean: true
    },
@@ -32,34 +26,32 @@ const wconfig = {
       new MyHtmlWebpackPlugin({
 
          entry: {
-            [`${page}`]: {
+            index: {
                filePathName: joinPath("src/html/index.html"),
-               outputFilename: "index.html"
+               outputFilePathName: "dist/index.html"
             },
-            // about: {
-            //    filePathName: joinPath("src/html/about.html"),
-            //    outputFilename: "about.html"
-            // }
-         },
-
-         output: {
-            path: joinPath("dist")
+            indexStyles: {
+               filePathName: joinPath("src/scss/app.scss"),
+               outputFilePathName: "dist/css/style.css"
+            },
+            about: {
+               filePathName: joinPath("src/html/about.html"),
+               outputFilePathName: "dist/about.html"
+            }
          },
          
-         // prefixName: "myapp", // myapp.include("/file.html")
+         // htmlIncludePrefixName: "myapp", // myapp.include("/file.html")
 
-         // minify: false,
+         htmlInjectScriptTag: "body",
+         htmlScriptTagAttributes: {defer: true},
 
-         injectScriptTag: "body",
-         // scriptTagAttributes: {defer: true},
-
-         staticProperties: {
+         htmlIncludeProperties: {
             title: "my website title",
             domainName: "domain name",
             meta: "<meta>",
             headScript: "<script></script>",
             bodyScript: "<script></script>"
-         },
+         }
       })
    ],
 
@@ -67,11 +59,9 @@ const wconfig = {
       extensions: [".js"],
    }
 }
-
 // webpack(wconfig, () => {
 //    // console.log("hello")
 // })
- 
 
 module.exports = wconfig
 

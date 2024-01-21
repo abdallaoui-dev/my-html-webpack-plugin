@@ -1,7 +1,8 @@
 import { Compiler, Stats } from "webpack"
 import FileBundler from "file-bundler"
 import htmlMinifier from "html-minifier"
-import fs from "fs"
+import sass from "sass"
+import fs from "fs/promises"
 import path from "path"
 
 export default class MyHtmlWebpackPlugin {
@@ -9,73 +10,90 @@ export default class MyHtmlWebpackPlugin {
    private readonly filePathNames = new Set<string>()
    private readonly options
    private logger!: WebpackLogger
+   
+   private readonly fileBundler
 
    constructor(options: MyHtmlWebpackPluginOptions) {
       this.options = options
+      this.fileBundler = new FileBundler({
+         className: this.options.htmlIncludePrefixName || this.name,
+         pattern: "include",
+         includeProperties: this.options.htmlIncludeProperties
+      })
    }
 
    public apply(compiler: Compiler) {
       this.logger = compiler.getInfrastructureLogger(this.name)
       
-      compiler.hooks.done.tap(this.name, (stats: Stats) => {
-
-         this.handleExternalHtmlFiles(stats)
-
+      compiler.hooks.done.tapAsync(this.name, async (stats: Stats, callback) => {
+         await this.handleExternalAssets(stats)
          stats.compilation.fileDependencies.addAll(this.filePathNames)
+         callback()
       })
    }
 
-   private handleExternalHtmlFiles(stats: Stats) {
+   private async handleExternalAssets(stats: Stats) {
 
-      const compilation = stats.compilation
-      const compiler = compilation.compiler
-
-      const modifiedFile = this.getModifiedFile(compiler)
-      
-      if (!this.options.output || !this.options.output.path) {
-         this.logger.error(`the output path is missing.`)
-         return
-      }
-
-      if (modifiedFile && !this.filePathNames.has(modifiedFile)) {
-         return
-      }
-
-      const minify = compiler.options.mode === "production" || Boolean(this.options.minify)
-
-      const fileBundler = new FileBundler({
-         className: this.options.prefixName || this.name,
-         pattern: "include",
-         includeProperties: this.options.staticProperties
-      })
-      
-      for (const key in this.options.entry) {
-         const target = this.options.entry[key]
-         
-         const bundleResults = fileBundler.bundle(target.filePathName)
-
-         bundleResults.filePathNames.forEach(filePathName => {
-            this.filePathNames.add(filePathName)
-         })
-
-         if (minify) this.minify(bundleResults)
-
-         const chunk = compilation.namedChunks.get(key)
-         
-         if (chunk) {
-            const scriptFileName = Array.from(chunk.files)[0] || key + ".js"
-
-            this.injectScript(bundleResults, scriptFileName)
+      try {
+         const compilation = stats.compilation
+         const compiler = compilation.compiler
+   
+         const modifiedFile = this.getModifiedFile(compiler)
+   
+         if (modifiedFile && !this.filePathNames.has(modifiedFile)) {
+            return
          }
+         
+         const minify = compiler.options.mode === "production"
+         
+         for (const key in this.options.entry) {
+            const target = this.options.entry[key]
+            const isHtmlFilePathName = target.filePathName.endsWith(".html")
+            const isScssFilePathName = target.filePathName.endsWith(".scss")
+            const isScssModifiedFile = modifiedFile && modifiedFile.endsWith(".scss")
+            
+            if ((isHtmlFilePathName && !modifiedFile) || (isHtmlFilePathName && !isScssModifiedFile)) {
 
-         this.output(this.options.output.path, target.outputFilename, bundleResults)
+               const bundleResults = await this.fileBundler.bundleAsync(target.filePathName)
+      
+               if (minify) this.minify(bundleResults)
+      
+               const chunk = compilation.namedChunks.get(key)
+               
+               if (chunk) {
+                  const scriptFileName = Array.from(chunk.files)[0] || key + ".js"
+      
+                  this.injectScript(bundleResults, scriptFileName)
+               }
+      
+               await this.output(target.outputFilePathName, bundleResults)
+            }
+   
+            if ((isScssFilePathName && !modifiedFile) || (isScssFilePathName && isScssModifiedFile)) {
+
+               const sassResult = await sass.compileAsync(target.filePathName, {
+                  style: minify ? "compressed" : undefined,
+                  alertColor: false
+               })
+               
+               const bundleResults = { source: sassResult.css, filePathNames: [] } as __bundleResults
+
+               bundleResults.filePathNames = sassResult.loadedUrls.map(url => path.resolve(url.pathname.slice(1)))
+               
+               await this.output(target.outputFilePathName, bundleResults)
+               
+            }
+         }
+         
+      } catch (error) {
+         this.logger.error(error)
       }
    }
 
    private injectScript = (bundleResults: __bundleResults, filename: string) => {
-      if (!this.options.injectScriptTag) return
+      if (!this.options.htmlInjectScriptTag) return
       let index = -1
-      if (this.options.injectScriptTag === "head") {
+      if (this.options.htmlInjectScriptTag === "head") {
          index = bundleResults.source.indexOf(`</head>`)
       } else {
          index = bundleResults.source.lastIndexOf(`</body>`)
@@ -85,7 +103,7 @@ export default class MyHtmlWebpackPlugin {
 
       let scriptTag = `<script src="${filename}"></script>`
       
-      const scriptTagAttributes = this.options.scriptTagAttributes
+      const scriptTagAttributes = this.options.htmlScriptTagAttributes
 
       if (scriptTagAttributes) {
          scriptTag = `<script `
@@ -120,22 +138,41 @@ export default class MyHtmlWebpackPlugin {
       })
    }
 
-   private output(pathname: string, filename: string, bundleResults: __bundleResults) {
+   private async output(outputFilePathName: string, bundleResults: __bundleResults) {
+
+      bundleResults.filePathNames.forEach(filePathName => {
+         this.filePathNames.add(filePathName)
+      })
+
       try {
-         const filePathName = path.resolve(pathname, filename.replace(/^[\\\/]/g, ""))
+         outputFilePathName = path.resolve(outputFilePathName)
+         
+         const directory = path.dirname(outputFilePathName)
+         
+         const fileExists = await this.fileExists(directory)
 
-         const directory = path.dirname(filePathName)
-
-         const relativePathname = path.relative(process.cwd(), directory)
-
-         if (!fs.existsSync(relativePathname)) {
-            fs.mkdirSync(relativePathname, { recursive: true })
+         if (!fileExists) {
+            await fs.mkdir(directory, { recursive: true })
          }
 
-         fs.writeFileSync(filePathName, bundleResults.source)
+         await fs.writeFile(outputFilePathName, bundleResults.source)
+
       } catch (e) {
          const error = e as Error
          this.logger.error(error)
+      }
+   }
+
+   private async fileExists(filePathName: string) {
+      try {
+         await fs.access(filePathName)
+         return true
+      } catch (error) {
+         const e = error as any
+         if (e.code === "ENOENT") {
+            return false
+         }
+         throw error
       }
    }
 
@@ -146,23 +183,17 @@ type MyHtmlWebpackPluginOptions = {
    entry: {
       [k: string]: {
          filePathName: string
-         outputFilename: string
+         outputFilePathName: string
       }
    }
 
-   output: {
-      path: string
-   },
-
-   prefixName?: string
-
-   minify?: boolean
+   htmlIncludePrefixName?: string
 
    /** html entry keys must match with js entry keys*/
-   injectScriptTag?: "body" | "head"
-   scriptTagAttributes?: {async?: true, defer?: true, type?: string, id?: string}
+   htmlInjectScriptTag?: "body" | "head"
+   htmlScriptTagAttributes?: {async?: true, defer?: true, type?: string, id?: string}
 
-   staticProperties?: {
+   htmlIncludeProperties?: {
       [k: string]: string
    }
 }

@@ -5,23 +5,17 @@ type MyHtmlWebpackPluginOptions = {
    entry: {
       [k: string]: {
          filePathName: string
-         outputFilename: string
+         outputFilePathName: string
       }
    }
 
-   output: {
-      path: string
-   },
-
-   prefixName?: string
-
-   minify?: boolean
+   htmlIncludePrefixName?: string
 
    /** html entry keys must match with js entry keys*/
-   injectScriptTag?: "body" | "head"
-   scriptTagAttributes?: {async?: true, defer?: true, type?: string, id?: string}
+   htmlInjectScriptTag?: "body" | "head"
+   htmlScriptTagAttributes?: {async?: true, defer?: true, type?: string, id?: string}
 
-   staticProperties?: {
+   htmlIncludeProperties?: {
       [k: string]: string
    }
 }
