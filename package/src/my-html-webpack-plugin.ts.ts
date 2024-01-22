@@ -54,7 +54,7 @@ export default class MyHtmlWebpackPlugin {
             
             if ((isHtmlFilePathName && !modifiedFile) || (isHtmlFilePathName && !isScssModifiedFile)) {
 
-               const bundleResults = await this.fileBundler.bundleAsync(target.filePathName)
+               const bundleResults = this.fileBundler.bundle(target.filePathName)
       
                if (minify) this.minify(bundleResults)
       
@@ -71,17 +71,18 @@ export default class MyHtmlWebpackPlugin {
    
             if ((isScssFilePathName && !modifiedFile) || (isScssFilePathName && isScssModifiedFile)) {
 
-               const sassResult = await sass.compileAsync(target.filePathName, {
+               const sassResult = sass.compile(target.filePathName, {
                   style: minify ? "compressed" : undefined,
                   alertColor: false
                })
-               
+
                const bundleResults = { source: sassResult.css, filePathNames: [] } as __bundleResults
 
                bundleResults.filePathNames = sassResult.loadedUrls.map(url => path.resolve(url.pathname.slice(1)))
                
                await this.output(target.outputFilePathName, bundleResults)
                
+               // this.logger.info(sass.info)
             }
          }
          
