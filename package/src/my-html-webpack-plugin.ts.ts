@@ -49,12 +49,12 @@ export default class MyHtmlWebpackPlugin {
          for (const key in this.options.entry) {
             const target = this.options.entry[key]
 
-            if (target.filePath && target.outputFilePath) {
+            if ("filePath" in target && target.outputFilePath) {
                if (!modifiedFile) await this.copyMoveFolderAsync(target.filePath, target.outputFilePath)
                continue
             }
 
-            if (!target.filePathName || !target.outputFilePathName) continue
+            if (!("filePathName" in target) || !target.outputFilePathName) continue
 
             const isHtmlFilePathName = target.filePathName.endsWith(".html")
             const isScssFilePathName = target.filePathName.endsWith(".scss")
@@ -222,21 +222,23 @@ export default class MyHtmlWebpackPlugin {
 
 }
 
-type MyHtmlWebpackPluginEntryCopyMove = {
+type MyHtmlWebpackPluginEntryObjectCopyMove = {
    filePath: string
    outputFilePath: string
 }
 
-type MyHtmlWebpackPluginEntry = {
+type MyHtmlWebpackPluginEntryObjectFB = {
    filePathName: string
    outputFilePathName: string
 }
 
+type MyHtmlWebpackPluginEntryObject = {
+   [k: string]: MyHtmlWebpackPluginEntryObjectFB | MyHtmlWebpackPluginEntryObjectCopyMove
+}
+
 type MyHtmlWebpackPluginOptions = {
 
-   entry: {
-      [k: string]: MyHtmlWebpackPluginEntry & MyHtmlWebpackPluginEntryCopyMove
-   }
+   entry: MyHtmlWebpackPluginEntryObject
 
    htmlIncludePrefixName?: string
 
