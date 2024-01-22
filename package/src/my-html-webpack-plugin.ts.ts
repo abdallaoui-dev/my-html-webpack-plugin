@@ -48,6 +48,14 @@ export default class MyHtmlWebpackPlugin {
          
          for (const key in this.options.entry) {
             const target = this.options.entry[key]
+
+            if (target.filePath && target.outputFilePath) {
+               if (!modifiedFile) await this.copyMoveFolderAsync(target.filePath, target.outputFilePath)
+               continue
+            }
+
+            if (!target.filePathName || !target.outputFilePathName) continue
+
             const isHtmlFilePathName = target.filePathName.endsWith(".html")
             const isScssFilePathName = target.filePathName.endsWith(".scss")
             const isScssModifiedFile = modifiedFile && modifiedFile.endsWith(".scss")
@@ -67,6 +75,7 @@ export default class MyHtmlWebpackPlugin {
                }
       
                await this.output(target.outputFilePathName, bundleResults)
+               continue
             }
    
             if ((isScssFilePathName && !modifiedFile) || (isScssFilePathName && isScssModifiedFile)) {
@@ -83,9 +92,39 @@ export default class MyHtmlWebpackPlugin {
                await this.output(target.outputFilePathName, bundleResults)
                
                // this.logger.info(sass.info)
+               continue
             }
+
          }
          
+      } catch (error) {
+         this.logger.error(error)
+      }
+   }
+
+   private copyMoveFolderAsync = async (filePath: string, outputFilePath: string) => {
+      try {
+         
+         await this.makeDirIfNotExists(outputFilePath)
+
+         const files = await fs.readdir(filePath)
+
+         await Promise.all(
+            files.map(async (file) => {
+               const filePathName = path.join(filePath, file)
+               const outputFilePathName = path.join(outputFilePath, file)
+
+               const filePathNameStats = await fs.stat(filePathName)
+
+               if (filePathNameStats.isDirectory()) {
+                  await this.copyMoveFolderAsync(filePathName, outputFilePathName)
+               } else {
+                  await fs.copyFile(filePathName, outputFilePathName)
+               }
+
+            })
+         )
+
       } catch (error) {
          this.logger.error(error)
       }
@@ -150,11 +189,7 @@ export default class MyHtmlWebpackPlugin {
          
          const directory = path.dirname(outputFilePathName)
          
-         const fileExists = await this.fileExists(directory)
-
-         if (!fileExists) {
-            await fs.mkdir(directory, { recursive: true })
-         }
+         await this.makeDirIfNotExists(directory)
 
          await fs.writeFile(outputFilePathName, bundleResults.source)
 
@@ -177,15 +212,30 @@ export default class MyHtmlWebpackPlugin {
       }
    }
 
+   private makeDirIfNotExists = async (filePathName: string) => {
+      const fileExists = await this.fileExists(filePathName)
+
+      if (fileExists) return
+      
+      await fs.mkdir(filePathName, { recursive: true })
+   }
+
+}
+
+type MyHtmlWebpackPluginEntryCopyMove = {
+   filePath: string
+   outputFilePath: string
+}
+
+type MyHtmlWebpackPluginEntry = {
+   filePathName: string
+   outputFilePathName: string
 }
 
 type MyHtmlWebpackPluginOptions = {
 
    entry: {
-      [k: string]: {
-         filePathName: string
-         outputFilePathName: string
-      }
+      [k: string]: MyHtmlWebpackPluginEntry & MyHtmlWebpackPluginEntryCopyMove
    }
 
    htmlIncludePrefixName?: string

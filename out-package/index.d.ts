@@ -1,12 +1,19 @@
 import { Compiler } from "webpack";
 
+type MyHtmlWebpackPluginEntryCopyMove = {
+   filePath: string
+   outputFilePath: string
+}
+
+type MyHtmlWebpackPluginEntry = {
+   filePathName: string
+   outputFilePathName: string
+}
+
 type MyHtmlWebpackPluginOptions = {
 
    entry: {
-      [k: string]: {
-         filePathName: string
-         outputFilePathName: string
-      }
+      [k: string]: MyHtmlWebpackPluginEntry & MyHtmlWebpackPluginEntryCopyMove
    }
 
    htmlIncludePrefixName?: string

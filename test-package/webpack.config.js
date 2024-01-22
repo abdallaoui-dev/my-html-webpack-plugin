@@ -37,6 +37,11 @@ const wconfig = {
             about: {
                filePathName: joinPath("src/html/about.html"),
                outputFilePathName: "dist/about.html"
+            },
+
+            images: {
+               filePath: joinPath("src/images"),
+               outputFilePath: "dist/images"
             }
          },
          
