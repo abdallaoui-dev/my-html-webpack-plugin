@@ -4,94 +4,82 @@ import htmlMinifier from "html-minifier"
 import sass from "sass"
 import fs from "fs/promises"
 import path from "path"
+import postcss from "postcss"
+import autoprefixer from "autoprefixer"
 
 export default class MyHtmlWebpackPlugin {
    private readonly name = "MyHtmlWebpackPlugin"
-   private readonly filePathNames = new Set<string>()
+   private readonly fileDependencies = new Map<string, string[]>()
    private readonly options
    private logger!: WebpackLogger
-   
-   private readonly fileBundler
+   private readonly htmlFileBundler
+   private stats!: Stats
+   private isProductionMode = false
 
    constructor(options: MyHtmlWebpackPluginOptions) {
       this.options = options
-      this.fileBundler = new FileBundler({
+      this.htmlFileBundler = new FileBundler({
          className: this.options.htmlIncludePrefixName || this.name,
          pattern: "include",
          includeProperties: this.options.htmlIncludeProperties
       })
    }
 
-   public apply(compiler: Compiler) {
+   public apply = (compiler: Compiler) => {
       this.logger = compiler.getInfrastructureLogger(this.name)
       
       compiler.hooks.done.tapAsync(this.name, async (stats: Stats, callback) => {
-         await this.handleExternalAssets(stats)
-         stats.compilation.fileDependencies.addAll(this.filePathNames)
+         this.stats = stats
+         this.isProductionMode = this.stats.compilation.compiler.options.mode === "production"
+         await this.handleExternalAssets()
+         for (const [key, filePathNames] of this.fileDependencies) {
+            filePathNames.forEach(filePathName => stats.compilation.fileDependencies.add(filePathName))
+         }
          callback()
       })
    }
 
-   private async handleExternalAssets(stats: Stats) {
+   private handleExternalAssets = async () => {
 
       try {
-         const compilation = stats.compilation
-         const compiler = compilation.compiler
-   
-         const modifiedFile = this.getModifiedFile(compiler)
-   
-         if (modifiedFile && !this.filePathNames.has(modifiedFile)) {
+
+         const modifiedFile = this.getModifiedFile()
+
+         if (modifiedFile) {
+
+            for (const [key, filePathNames] of this.fileDependencies) {
+
+               if (filePathNames.includes(modifiedFile)) {
+
+                  const entry = this.options.entry[key] as MyHtmlWebpackPluginEntryObjectFB
+
+                  if (entry.filePathName.endsWith(".html")) {
+                     this.bundleHtml(key, entry)
+                  } else if (entry.filePathName.endsWith(".scss")) {
+                     this.bundleCss(key, entry)
+                  }
+
+               }
+            }
+
             return
          }
-         
-         const minify = compiler.options.mode === "production"
-         
+
          for (const key in this.options.entry) {
-            const target = this.options.entry[key]
+            const entry = this.options.entry[key]
 
-            if ("filePath" in target && target.outputFilePath) {
-               if (!modifiedFile) await this.copyMoveFolderAsync(target.filePath, target.outputFilePath)
+            if ("filePath" in entry && entry.outputFilePath && !modifiedFile) {
+               if (!modifiedFile) await this.copyMoveFolderAsync(entry.filePath, entry.outputFilePath)
                continue
             }
 
-            if (!("filePathName" in target) || !target.outputFilePathName) continue
-
-            const isHtmlFilePathName = target.filePathName.endsWith(".html")
-            const isScssFilePathName = target.filePathName.endsWith(".scss")
-            const isScssModifiedFile = modifiedFile && modifiedFile.endsWith(".scss")
+            if (!("filePathName" in entry) || !entry.outputFilePathName) continue
             
-            if ((isHtmlFilePathName && !modifiedFile) || (isHtmlFilePathName && !isScssModifiedFile)) {
-
-               const bundleResults = this.fileBundler.bundle(target.filePathName)
-      
-               if (minify) this.minify(bundleResults)
-      
-               const chunk = compilation.namedChunks.get(key)
-               
-               if (chunk) {
-                  const scriptFileName = Array.from(chunk.files)[0] || key + ".js"
-      
-                  this.injectScript(bundleResults, scriptFileName)
-               }
-      
-               await this.output(target.outputFilePathName, bundleResults)
+            if (entry.filePathName.endsWith(".html")) {
+               await this.bundleHtml(key, entry)
                continue
-            }
-   
-            if ((isScssFilePathName && !modifiedFile) || (isScssFilePathName && isScssModifiedFile)) {
-
-               const sassResult = sass.compile(target.filePathName, {
-                  style: minify ? "compressed" : undefined,
-                  alertColor: false
-               })
-
-               const bundleResults = { source: sassResult.css, filePathNames: [] } as __bundleResults
-
-               bundleResults.filePathNames = sassResult.loadedUrls.map(url => path.resolve(url.pathname.slice(1)))
-               
-               await this.output(target.outputFilePathName, bundleResults)
-               
-               // this.logger.info(sass.info)
+            } else if (entry.filePathName.endsWith(".scss")) {
+               await this.bundleCss(key, entry)
                continue
             }
 
@@ -100,6 +88,45 @@ export default class MyHtmlWebpackPlugin {
       } catch (error) {
          this.logger.error(error)
       }
+   }
+
+   private bundleHtml = async (key: string, entry: MyHtmlWebpackPluginEntryObjectFB) => {
+
+      const bundleResults = this.htmlFileBundler.bundle(entry.filePathName) as __bundleResults
+
+      bundleResults.key = key
+
+      if (this.isProductionMode) this.minify(bundleResults)
+
+      const chunk = this.stats.compilation.namedChunks.get(key)
+      
+      if (chunk) {
+         const scriptFileName = Array.from(chunk.files)[0] || key + ".js"
+
+         this.injectScript(bundleResults, scriptFileName)
+      }
+
+      await this.output(entry.outputFilePathName, bundleResults)
+   }
+
+   private bundleCss = async (key: string, entry: MyHtmlWebpackPluginEntryObjectFB) => {
+
+      const sassResult = sass.compile(entry.filePathName, {
+         style: this.isProductionMode ? "compressed" : undefined,
+         alertColor: false
+      })
+
+      const bundleResults = { source: sassResult.css, filePathNames: [], key } as __bundleResults
+      
+      bundleResults.filePathNames = sassResult.loadedUrls.map(url => path.resolve(url.pathname.slice(1)))
+
+      if (this.isProductionMode) {
+         bundleResults.source = postcss([autoprefixer]).process(bundleResults.source, {
+            from: undefined
+         }).css
+      }
+      
+      await this.output(entry.outputFilePathName, bundleResults)     
    }
 
    private copyMoveFolderAsync = async (filePath: string, outputFilePath: string) => {
@@ -160,13 +187,13 @@ export default class MyHtmlWebpackPlugin {
       bundleResults.source = bundleResults.source.slice(0, index) + scriptTag + bundleResults.source.slice(index)
    }
 
-   private getModifiedFile(compiler: Compiler) {
-      const modifiedFiles = compiler.modifiedFiles
+   private getModifiedFile = () => {
+      const modifiedFiles = this.stats.compilation.compiler.modifiedFiles
       if (!modifiedFiles) return null
       return [...modifiedFiles][0] || null
    }
 
-   private minify(bundleResults: __bundleResults) {
+   private minify = (bundleResults: __bundleResults) => {
       bundleResults.source = htmlMinifier.minify(bundleResults.source, {
          removeComments: true,
          continueOnParseError: true,
@@ -178,12 +205,8 @@ export default class MyHtmlWebpackPlugin {
       })
    }
 
-   private async output(outputFilePathName: string, bundleResults: __bundleResults) {
-
-      bundleResults.filePathNames.forEach(filePathName => {
-         this.filePathNames.add(filePathName)
-      })
-
+   private output = async (outputFilePathName: string, bundleResults: __bundleResults) => {
+      this.fileDependencies.set(bundleResults.key, bundleResults.filePathNames)
       try {
          outputFilePathName = path.resolve(outputFilePathName)
          
@@ -199,7 +222,7 @@ export default class MyHtmlWebpackPlugin {
       }
    }
 
-   private async fileExists(filePathName: string) {
+   private fileExists = async (filePathName: string) => {
       try {
          await fs.access(filePathName)
          return true
@@ -251,18 +274,11 @@ type MyHtmlWebpackPluginOptions = {
    }
 }
 
-
 type __bundleResults = {
+   key: string;
    source: string;
    filePathNames: string[];
 }
-
-
-
-
-
-
-
 
 interface WebpackLogger {
 	getChildLogger: (arg0: string | (() => string)) => WebpackLogger;

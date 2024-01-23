@@ -1,4 +1,7 @@
 .name {
    background-color: red;
-   color: green;
+   transition: all 1s;
+   user-select: none;
+   display: grid;
+   // color: green;
 }

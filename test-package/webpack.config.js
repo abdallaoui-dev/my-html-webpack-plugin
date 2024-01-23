@@ -7,7 +7,7 @@ const joinPath = (mypath) => path.join(__dirname, mypath)
 const wconfig = {
    
    mode: "production",
-   watch: false,
+   watch: true,
 
    entry: {
       index: joinPath("src/js/index.js"),
