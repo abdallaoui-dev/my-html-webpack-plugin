@@ -1,6 +1,6 @@
 {
   "name": "my-html-webpack-plugin",
-  "version": "4.3.2",
+  "version": "4.5.1",
   "description": "",
   "main": "index.js",
   "types": "./index.d.ts",
@@ -18,7 +18,7 @@
   "dependencies": {
     "autoprefixer": "^10.4.17",
     "file-bundler": "^2.2.0",
-    "html-minifier": "^4.0.0",
+    "html-minifier-terser": "^7.2.0",
     "postcss": "^8.4.33",
     "sass": "^1.70.0"
   },
@@ -27,5 +27,8 @@
     "url": "git+https://github.com/abdallaoui-dev/my-html-webpack-plugin.git"
   },
   "homepage": "https://github.com/abdallaoui-dev/my-html-webpack-plugin",
-  "bugs": "https://github.com/abdallaoui-dev/my-html-webpack-plugin/issues"
+  "bugs": "https://github.com/abdallaoui-dev/my-html-webpack-plugin/issues",
+  "devDependencies": {
+    "@types/html-minifier-terser": "^7.0.2"
+  }
 }

@@ -1,10 +1,10 @@
-const path = require("path")
-const MyHtmlWebpackPlugin = require("my-html-webpack-plugin")
-const webpack = require("webpack")
+import path from "path"
+import MyHtmlWebpackPlugin from "my-html-webpack-plugin"
+import { Configuration } from "webpack"
 
-const joinPath = (mypath) => path.join(__dirname, mypath)
+const joinPath = (mypath: string) => path.join(__dirname, mypath)
 
-const wconfig = {
+const wconfig: Configuration = {
    
    mode: "production",
    watch: true,
@@ -26,24 +26,40 @@ const wconfig = {
       new MyHtmlWebpackPlugin({
 
          entry: {
+            index_css: {
+               import: joinPath("src/scss/index/app.scss"),
+               filename: "css/[contenthash].css"
+               // filename: "/css/index.css"
+            },
+
             index: {
-               filePathName: joinPath("src/html/index.html"),
-               outputFilePathName: "dist/index.html"
+               import: joinPath("src/html/index.html"),
+               filename: "index.html"
             },
-            indexStyles: {
-               filePathName: joinPath("src/scss/app.scss"),
-               outputFilePathName: "dist/css/style.css"
+
+
+            about_css: {
+               import: joinPath("src/scss/about/app.scss"),
+               filename: "css/[contenthash].css"
+               // filename: "/css/about.css"
             },
+
             about: {
-               filePathName: joinPath("src/html/about.html"),
-               outputFilePathName: "dist/about.html"
+               import: joinPath("src/html/about.html"),
+               filename: "/about.html"
             },
 
             images: {
-               filePath: joinPath("src/images"),
-               outputFilePath: "dist/images"
+               srcPath: joinPath("src/images"),
+               destPath: "/images"
             }
          },
+         
+         outputPath: joinPath("dist"),
+
+         htmlInjectCssLinkTag: "afterbegin",
+
+         htmlCssLinkTagAttributes: {id: "base_css"},
          
          // htmlIncludePrefixName: "myapp", // myapp.include("/file.html")
 
@@ -68,5 +84,5 @@ const wconfig = {
 //    // console.log("hello")
 // })
 
-module.exports = wconfig
+export default wconfig
 

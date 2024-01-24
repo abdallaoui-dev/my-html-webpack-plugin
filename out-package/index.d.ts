@@ -1,13 +1,14 @@
-import { Compiler } from "webpack";
+import { Compiler } from "webpack"
+import { Options as htmlMinifierOptions } from "html-minifier-terser"
 
 type MyHtmlWebpackPluginEntryObjectCopyMove = {
-   filePath: string
-   outputFilePath: string
+   srcPath: string
+   destPath: string
 }
 
 type MyHtmlWebpackPluginEntryObjectFB = {
-   filePathName: string
-   outputFilePathName: string
+   import: string
+   filename: string
 }
 
 type MyHtmlWebpackPluginEntryObject = {
@@ -16,13 +17,26 @@ type MyHtmlWebpackPluginEntryObject = {
 
 type MyHtmlWebpackPluginOptions = {
 
+   /**
+    * html entry keys must match js entry keys.
+    * 
+    * css entry keys must match html keys and end with _css
+   */
    entry: MyHtmlWebpackPluginEntryObject
+
+   outputPath?: string
+
+   htmlMinifierOptions?: htmlMinifierOptions
 
    htmlIncludePrefixName?: string
 
-   /** html entry keys must match with js entry keys*/
+   htmlInjectCssLinkTag?: "afterbegin" | "beforeend"
+   
+   htmlCssLinkTagAttributes?: {[k: string]: any}
+
    htmlInjectScriptTag?: "body" | "head"
-   htmlScriptTagAttributes?: {async?: true, defer?: true, type?: string, id?: string}
+
+   htmlScriptTagAttributes?: {[k: string]: any}
 
    htmlIncludeProperties?: {
       [k: string]: string
@@ -30,8 +44,8 @@ type MyHtmlWebpackPluginOptions = {
 }
 
 declare class MyHtmlWebpackPlugin {
-    private options;
-    constructor(options: MyHtmlWebpackPluginOptions);
-    apply(compiler: Compiler): void;
+   private options;
+   constructor(options: MyHtmlWebpackPluginOptions);
+   apply(compiler: Compiler): void
 }
 export = MyHtmlWebpackPlugin

@@ -1,6 +1,6 @@
 {
   "name": "my-html-webpack-plugin",
-  "version": "4.3.2",
+  "version": "4.5.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -12,12 +12,12 @@
   "dependencies": {
     "autoprefixer": "^10.4.17",
     "file-bundler": "^2.2.0",
-    "html-minifier": "^4.0.0",
+    "html-minifier-terser": "^7.2.0",
     "postcss": "^8.4.33",
     "sass": "^1.70.0"
   },
   "devDependencies": {
-    "@types/html-minifier": "^4.0.5",
+    "@types/html-minifier-terser": "^7.0.2",
     "@types/node": "^18.19.8",
     "@types/sass": "^1.45.0",
     "@types/webpack-node-externals": "^3.0.4",
