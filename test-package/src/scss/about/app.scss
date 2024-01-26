@@ -1,5 +1,6 @@
 @import "./utils.scss";
 
-body {
-   display: none;
+.body {
+   display: grid;
+   content: "about page";
 }

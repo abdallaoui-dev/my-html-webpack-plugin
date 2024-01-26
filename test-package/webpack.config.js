@@ -1,18 +1,19 @@
-import path from "path"
-import MyHtmlWebpackPlugin from "my-html-webpack-plugin"
-import { Configuration, webpack } from "webpack"
+const path = require("path")
+const MyHtmlWebpackPlugin = require("my-html-webpack-plugin")
+const webpack = require("webpack")
 
-const joinPath = (mypath: string) => path.join(__dirname, mypath)
+const joinPath = (mypath) => path.join(__dirname, mypath)
 
-const wconfig: Configuration = {
+const wconfig = {
    
-   mode: "development",
+   mode: "production",
    watch: false,
 
    entry: {
       lib: {
          import: joinPath("src/js/lib.js"),
-         filename: "js/lib.js",
+         // filename: "js/lib.js",
+         filename: "js/[contenthash].js",
          library: {
             name: "lib",
             type: "var"
@@ -24,22 +25,23 @@ const wconfig: Configuration = {
 
    output: {
       path: joinPath("dist"),
-      // filename: "js/s.[contenthash].js",
-      filename: "js/[name].js",
+      filename: "js/s.[contenthash].js",
+      // filename: "js/[name].js",
       clean: true
    },
 
    plugins: [
       
       new MyHtmlWebpackPlugin({
-
          entry: {
+
             global: {
+
                styles: [
                   {
                      import: joinPath("src/scss/global.scss"),
-                     // filename: "css/[contenthash].css"
-                     filename: "/css/global.css"
+                     filename: "css/[contenthash].css"
+                     // filename: "/css/global.css"
                   }
                ],
 
@@ -49,6 +51,7 @@ const wconfig: Configuration = {
                      inject: "head"
                   }
                ]
+
             },
 
             index: {
@@ -57,13 +60,13 @@ const wconfig: Configuration = {
                styles: [
                   {
                      import: joinPath("src/scss/index/lib.scss"),
-                     // filename: "css/[contenthash].css"
-                     filename: "/css/index-lib.css"
+                     filename: "css/[contenthash].css"
+                     // filename: "/css/index-lib.css"
                   },
                   {
                      import: joinPath("src/scss/index/app.scss"),
-                     // filename: "css/[contenthash].css"
-                     filename: "/css/index.css"
+                     filename: "css/[contenthash].css"
+                     // filename: "/css/index.css"
                   },
                ],
                
@@ -83,13 +86,13 @@ const wconfig: Configuration = {
                styles: [
                   {
                      import: joinPath("src/scss/about/lib.scss"),
-                     // filename: "css/[contenthash].css"
-                     filename: "/css/about-lib.css"
+                     filename: "css/[contenthash].css"
+                     // filename: "/css/about-lib.css"
                   },
                   {
                      import: joinPath("src/scss/about/app.scss"),
-                     // filename: "css/[contenthash].css"
-                     filename: "/css/about.css"
+                     filename: "css/[contenthash].css"
+                     // filename: "/css/about.css"
                   },
                ],
                
@@ -124,9 +127,13 @@ const wconfig: Configuration = {
       extensions: [".js"],
    }
 }
-webpack(wconfig, () => {
-   // console.log("hello")
-})
-
-// export default wconfig
+// console.log("webpack")
+// setTimeout(() => {
+   
+//    webpack(wconfig, () => {
+//       console.log("hello")
+//    })
+   
+// }, 1000)
+module.exports = wconfig
 

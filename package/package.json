@@ -1,6 +1,6 @@
 {
   "name": "my-html-webpack-plugin",
-  "version": "4.5.1",
+  "version": "5.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {

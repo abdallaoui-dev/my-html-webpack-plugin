@@ -1,6 +1,6 @@
-@import "./utils";
+@import "./utils.scss";
 
-body {
-   display: none;
-   color: red;
+.body {
+   display: grid;
+   content: "index page";
 }

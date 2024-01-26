@@ -1,14 +1,24 @@
 import { Compiler } from "webpack"
-import { Options as htmlMinifierOptions } from "html-minifier-terser"
+
+type MyHtmlWebpackPluginEntryObjectPathOptions = {
+   import: string
+   filename: string
+}
+
+type MyHtmlWebpackPluginEntryObjectJsChunksOptions = {
+   name: string
+   inject?: "body" | "head",
+   attributes?: {[k: string]: any}
+}
 
 type MyHtmlWebpackPluginEntryObjectCopyMove = {
    srcPath: string
    destPath: string
 }
 
-type MyHtmlWebpackPluginEntryObjectFB = {
-   import: string
-   filename: string
+type MyHtmlWebpackPluginEntryObjectFB = Partial<MyHtmlWebpackPluginEntryObjectPathOptions> & {
+   styles?: MyHtmlWebpackPluginEntryObjectPathOptions[]
+   jschunks?: MyHtmlWebpackPluginEntryObjectJsChunksOptions[]
 }
 
 type MyHtmlWebpackPluginEntryObject = {
@@ -17,31 +27,21 @@ type MyHtmlWebpackPluginEntryObject = {
 
 type MyHtmlWebpackPluginOptions = {
 
-   /**
-    * html entry keys must match js entry keys.
-    * 
-    * css entry keys must match html keys and end with _css
-   */
    entry: MyHtmlWebpackPluginEntryObject
 
    outputPath?: string
 
-   htmlMinifierOptions?: htmlMinifierOptions
+   htmlMinifyOptions?: {[k: string]: any}
+
+   // cssMinifyOptions?: {[k: string]: any}
 
    htmlIncludePrefixName?: string
-
-   htmlInjectCssLinkTag?: "afterbegin" | "beforeend"
-   
-   htmlCssLinkTagAttributes?: {[k: string]: any}
-
-   htmlInjectScriptTag?: "body" | "head"
-
-   htmlScriptTagAttributes?: {[k: string]: any}
 
    htmlIncludeProperties?: {
       [k: string]: string
    }
 }
+
 
 declare class MyHtmlWebpackPlugin {
    private options;
